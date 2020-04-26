@@ -3,3 +3,19 @@
 ################################################################################
 
 /resource.h
+/cellEngine.vcxproj.user
+/cellEngine.vcxproj.filters
+/cellEngine.vcxproj
+/cellEngine.sln
+/cellEngine.aps
+/src/glad.c
+/Release
+/lib
+/include/KHR
+/include/glm
+/include/GLFW
+/include/glad
+/.vs/cellEngine/v16
+/Debug
+/include
+/examples
