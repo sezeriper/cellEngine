@@ -1,21 +1,57 @@
-﻿################################################################################
-# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
-################################################################################
+# Created by https://www.gitignore.io/api/c++,scons,visualstudiocode
+# Edit at https://www.gitignore.io/?templates=c++,scons,visualstudiocode
 
-/resource.h
-/cellEngine.vcxproj.user
-/cellEngine.vcxproj.filters
-/cellEngine.vcxproj
-/cellEngine.sln
-/cellEngine.aps
-/src/glad.c
-/Release
-/lib
-/include/KHR
-/include/glm
-/include/GLFW
-/include/glad
-/.vs/cellEngine/v16
-/Debug
-/include
-/examples
+### C++ ###
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+### SCons ###
+# for projects that use SCons for building: http://http://www.scons.org/
+.sconsign.dblite
+
+# When configure fails, SCons outputs these
+config.log
+.sconf_temp
+
+### VisualStudioCode ###
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+### VisualStudioCode Patch ###
+# Ignore all local history of files
+.history
+
+# End of https://www.gitignore.io/api/c++,scons,visualstudiocode
