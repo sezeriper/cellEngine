@@ -1,9 +1,9 @@
 #include <random>
 #include "cellEngine.hpp"
 
-#define WIDTH 100
-#define HEIGTH 100
-#define PIXEL_SIZE 1
+#define WIDTH 200
+#define HEIGTH 200
+#define PIXEL_SIZE 4
 
 class gameOfLife : public cellEngine {
 private:

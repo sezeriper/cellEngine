@@ -347,7 +347,7 @@ public:
 
     void setup(int width, int height, int cellSize, const char* title) {
         window = new Window(width * cellSize, height * cellSize, title);
-        shader = new Shader(".\\src\\shaders\\shader");
+        shader = new Shader("../../shaders/shader");
         cells = new ColorGrid(width, height, shader);
     }
 
