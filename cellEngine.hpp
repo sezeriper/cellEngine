@@ -7,24 +7,66 @@
 #include <vector>
 #include <chrono>
 #include <thread>
+#include <functional>
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
-const std::string getFile(const std::string& filePath) {
+const GLchar* fs = R"(
+#version 460
 
-    std::ifstream file(filePath);
-    std::stringstream stringStream;
+out vec4 outColor;
+in vec4 gs_color;
 
-    if(!file.is_open()) std::cerr << "error: file is not here: " << filePath << "\n";
-
-    for(std::string line; getline(file, line);) {
-        stringStream << line << "\n";
-    }
-
-    return stringStream.str();
+void main() {
+    outColor = gs_color/255;
 }
+)";
+
+const GLchar* gs = R"(
+#version 460
+
+layout(points) in;
+layout(triangle_strip, max_vertices = 4) out;
+
+in uvec3 vs_color[];
+out vec4 gs_color;
+
+uniform mat4 projection;
+
+void makeRect(vec4 position) {
+    gl_Position = projection * (position + vec4(0.0f, 0.0f, 0.0f, 0.0f));
+    EmitVertex();
+    gl_Position = projection * (position + vec4(0.0f, 1.0f, 0.0f, 0.0f));
+    EmitVertex();
+    gl_Position = projection * (position + vec4(1.0f, 0.0f, 0.0f, 0.0f));
+    EmitVertex();
+    gl_Position = projection * (position + vec4(1.0f, 1.0f, 0.0f, 0.0f));
+    EmitVertex();
+
+    EndPrimitive();
+}
+
+void main() {
+    gs_color = vec4(vs_color[0], 1.0f);
+    makeRect(gl_in[0].gl_Position);
+}
+)";
+
+const GLchar* vs = R"(
+#version 460
+
+layout(location = 0) in ivec2 position;
+layout(location = 1) in uvec3 color;
+
+out uvec3 vs_color;
+
+void main() {
+    gl_Position = vec4(position, 0.0f, 1.0f);
+    vs_color = color;
+}
+)";
 
 template<class T>
 class grid {
@@ -41,18 +83,18 @@ public:
         gridPtr = nullptr;
     }
 
-    grid(int rows, int cols) { resize(rows, cols); }
+    grid(const int rows, const int cols) { resize(rows, cols); }
     
-    grid(grid<T>&& rGrid) : gridPtr(rGrid.gridPtr), m_rows(rGrid.m_rows), m_cols(rGrid.m_cols), length(rGrid.length) {
-        rGrid.gridPtr = nullptr; 
+    grid(grid<T>&& rGrid) : m_rows(rGrid.m_rows), m_cols(rGrid.m_cols), length(rGrid.length), gridPtr(rGrid.gridPtr) {
         rGrid.m_rows = 0;
         rGrid.m_cols = 0;
         rGrid.length = 0;
+        rGrid.gridPtr = nullptr; 
     }
 
-    void fill(T data) { std::fill_n(gridPtr, length, data); }
+    void fill(const T data) { std::fill_n(gridPtr, length, data); }
 
-    void resize(int rows, int cols) {
+    void resize(const int rows, const int cols) {
         if (rows == m_rows && cols == m_cols) return;
 
         if (rows * cols == m_rows * m_cols) std::swap(m_rows, m_cols);
@@ -64,7 +106,7 @@ public:
         gridPtr = new T[length];
     }
 
-    grid<T>& operator=(grid<T>& other) {
+    grid<T>& operator=(const grid<T>& other) {
         if(this != &other) {
 
             resize(other.size);
@@ -74,78 +116,69 @@ public:
     }
 
     grid<T>& operator=(grid<T>&& other) noexcept {
-        gridPtr = other.gridPtr;
         m_rows = other.m_rows;
         m_cols = other.m_cols;
         length = other.length;
+        gridPtr = other.gridPtr;
 
-        other.gridPtr = nullptr;
         other.m_rows = 0;
         other.m_cols = 0;
         other.length = 0;
+        other.gridPtr = nullptr;
 
         return *this;
     }
 
-    const int getLength() const { return length; }
-    const T* getPtr() const { return gridPtr; }
+    int getLength() const { return length; }
+    T* getPtr() const { return gridPtr; }
 
-    const T get(int x, int y) { return gridPtr[y * m_cols + x]; }
-    void set(int x, int y, T val) { gridPtr[y * m_cols + x] = val; }
+    T get(const int x, const int y) const { return gridPtr[y * m_cols + x]; }
+    void set(const int x, const int y, T val) { gridPtr[y * m_cols + x] = val; }
 };
 
 class Shader {
 private:
-    GLint programID;
+    GLuint programID;
     GLint projectionLocation;
-
-public:
-    Shader(const std::string shadersPath) {
-        programID = compile(shadersPath);
-        enable();
-    }
 
     void errorCheck(GLuint ID) {
 
         GLint result = GL_FALSE;
-        int infoLength;
+        GLint infoLength;
 
         glGetShaderiv(ID, GL_COMPILE_STATUS, &result);
         glGetShaderiv(ID, GL_INFO_LOG_LENGTH, &infoLength);
 
         if(infoLength > 0) {
-            std::vector<char> ErrorMessage(infoLength+1);
+            std::vector<char> ErrorMessage(infoLength + 1);
             glGetShaderInfoLog(ID, infoLength, nullptr, &ErrorMessage[0]);
             std::cerr << &ErrorMessage[0];
         }
     }
+public:
+    Shader() {
+        programID = compile();
+        enable();
+    }
 
-    GLint compile(const std::string& shadersPath) {
+    GLuint compile() {
+        GLuint vertexShader   = glCreateShader(GL_VERTEX_SHADER);
+        GLuint geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
+        GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
-        const std::string vertexShaderCode(getFile(shadersPath + ".vs"));
-        const std::string geometryShaderCode(getFile(shadersPath + ".gs"));
-        const std::string fragmentShaderCode(getFile(shadersPath + ".fs"));
-
-        const GLchar* vertexShaderCode_ptr = vertexShaderCode.c_str();
-        const GLchar* geometryShaderCode_ptr = geometryShaderCode.c_str();
-        const GLchar* fragmentShaderCode_ptr = fragmentShaderCode.c_str();
-
-        GLint program        = glCreateProgram();
-        GLint vertexShader   = glCreateShader(GL_VERTEX_SHADER);
-        GLint geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
-        GLint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-
-        glShaderSource(vertexShader, 1, &vertexShaderCode_ptr, nullptr);
+        glShaderSource(vertexShader, 1, &vs, nullptr);
         glCompileShader(vertexShader);
         errorCheck(vertexShader);
 
-        glShaderSource(geometryShader, 1, &geometryShaderCode_ptr, nullptr);
+        glShaderSource(geometryShader, 1, &gs, nullptr);
         glCompileShader(geometryShader);
         errorCheck(geometryShader);
 
-        glShaderSource(fragmentShader, 1, &fragmentShaderCode_ptr, nullptr);
+        glShaderSource(fragmentShader, 1, &fs, nullptr);
         glCompileShader(fragmentShader);
         errorCheck(fragmentShader);
+
+        GLuint program = glCreateProgram();
 
         glAttachShader(program, vertexShader);
         glAttachShader(program, geometryShader);
@@ -169,14 +202,14 @@ public:
         glUseProgram(0);
     }
 
-    void setProjection(glm::mat4& matrix) {
+    void setProjection(const glm::mat4& matrix) const {
         glUniformMatrix4fv(projectionLocation, 1, GL_FALSE, &matrix[0][0]);
     }
 };
 
 class ColorGrid : public grid<glm::u8vec3> {
 private:
-    Shader* cellShader;
+    const Shader& cellShader;
 
     GLuint vao;
     GLuint vbo[2];
@@ -184,7 +217,7 @@ private:
         
 public:
 
-    ColorGrid(int rows, int cols, Shader* shaderProgram): cellShader(shaderProgram) {
+    ColorGrid(const int rows, const int cols, const Shader& shaderProgram): cellShader(shaderProgram) {
         resize(rows, cols);
 
         glGenBuffers(2, &vbo[0]);
@@ -219,9 +252,9 @@ public:
         gridPtr = (glm::u8vec3*)glMapNamedBufferRange(vbo[1], 0, length * sizeof(glm::u8vec3), flags);
     }
 
-    void render() {
-        glm::mat4 proj = glm::ortho(0.0f, (float)m_rows, (float)m_cols, 0.0f);
-        cellShader->setProjection(proj);
+    void render() const {
+        const glm::mat4 proj = glm::ortho(0.0f, (float)m_rows, (float)m_cols, 0.0f);
+        cellShader.setProjection(proj);
 
         glDrawArrays(GL_POINTS, 0, length);
     }
@@ -248,7 +281,7 @@ private:
         std::cerr << "Error(" << error << "): " << description << "\n";
     }
 
-    static void keyCallback(GLFWwindow* window_p, int key, int scancode, int action, int mods) {
+    static void keyCallback(GLFWwindow* window_p, int key, int, int action, int) {
         Window* windowPtr = (Window*)glfwGetWindowUserPointer(window_p);
 
         if(key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
@@ -259,7 +292,7 @@ private:
             windowPtr->keys[key] = false;
     }
 
-    static void scroll_callback(GLFWwindow* window_p, double xoffset, double yoffset) {
+    static void scroll_callback(GLFWwindow* window_p, double, double yoffset) {
         Window* windowPtr = (Window*)glfwGetWindowUserPointer(window_p);
         windowPtr->scroll = yoffset;
         windowPtr->updated = true;
@@ -294,8 +327,6 @@ public:
         std::memset(&keys[0], false, sizeof(keys));
     }
 
-    Window() : keys(), scroll(0.0) {}
-
     bool shouldClose() const {
         return glfwWindowShouldClose(window_ptr);
     }
@@ -316,7 +347,7 @@ public:
         return 0;
     }
 
-    void update() {
+    void update() const {
         GLenum err = glGetError();
 
         if(err != GL_NO_ERROR) {
@@ -336,32 +367,29 @@ public:
 
 class cellEngine {
 public:
-    Window* window = nullptr;
-    Shader* shader = nullptr;
-    ColorGrid* cells = nullptr;
+    const Window window;
+private:
+    const Shader shader;
+public:
+    ColorGrid cells;
 
-    cellEngine() { }
+    std::function<void()> update;
 
-    virtual void start() = 0;
-    virtual void update() = 0;
-
-    void setup(int width, int height, int cellSize, const char* title) {
-        window = new Window(width * cellSize, height * cellSize, title);
-        shader = new Shader("../../shaders/shader");
-        cells = new ColorGrid(width, height, shader);
-    }
+    cellEngine(int width, int height, int cellSize, const char* title) :
+        window(width * cellSize, height * cellSize, title),
+        shader(),
+        cells(width, height, shader) {}
 
     void mainLoop() {
-        start();
-        while (!window->shouldClose()) {
-            double _time = window->getTime();
+        while (!window.shouldClose()) {
+            double _time = window.getTime();
 
             update();
 
-            cells->render();
-            window->update();
+            cells.render();
+            window.update();
 
-            double frameTime = window->getTime() - _time;
+            double frameTime = window.getTime() - _time;
             //std::chrono::duration<double, std::milli> sleepDuration((1000.0/5.0) - frameTime);
             //std::this_thread::sleep_for(sleepDuration);
             std::cout << 1.0 / frameTime << "\n";

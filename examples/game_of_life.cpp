@@ -1,54 +1,47 @@
-#include <random>
+#include <stdlib.h>
 #include "cellEngine.hpp"
 
-#define WIDTH 200
-#define HEIGTH 200
-#define PIXEL_SIZE 4
+#define WIDTH 500
+#define HEIGTH 500
+#define PIXEL_SIZE 1
 
-class gameOfLife : public cellEngine {
-private:
-    int countNeighbors(int x, int y) {
-        return  earth.get(x-1, y+1) +
-                earth.get(x,   y+1) +
-                earth.get(x+1, y+1) +
-                earth.get(x-1, y)   +
-                earth.get(x+1, y)   +
-                earth.get(x-1, y-1) +
-                earth.get(x,   y-1) +
-                earth.get(x+1, y-1);
-    }
 
-    void randomize() {
 
-        for(int i = 0; i < WIDTH; i++) {
-            for(int j = 0; j < HEIGTH; j++) {
-                earth.set(i, j, distribution(generator));
-            }
+int countNeighbors(int x, int y, const grid<bool>& grid) {
+    return  grid.get(x-1, y+1) +
+            grid.get(x,   y+1) +
+            grid.get(x+1, y+1) +
+            grid.get(x-1, y)   +
+            grid.get(x+1, y)   +
+            grid.get(x-1, y-1) +
+            grid.get(x,   y-1) +
+            grid.get(x+1, y-1);
+}
+
+void randomize(grid<bool>& grid) {
+    for(int i = 0; i < WIDTH; i++) {
+        for(int j = 0; j < HEIGTH; j++) {
+            grid.set(i, j, rand() % 2);
         }
     }
+}
 
-    grid<bool> earth;
-    grid<bool> nextEarth;
+int main() {
+    cellEngine simulation(WIDTH, HEIGTH, PIXEL_SIZE, "lo");
 
-    std::default_random_engine generator;
-    std::bernoulli_distribution distribution;
+    grid<bool> earth(WIDTH, HEIGTH);
+    grid<bool> nextEarth(WIDTH, HEIGTH);
 
-public:
-    void start() {
-        earth = grid<bool>(WIDTH, HEIGTH);
-        nextEarth = grid<bool>(WIDTH, HEIGTH);
-    }
+    simulation.update = [&simulation, &earth, &nextEarth](){
 
-    void update() {
+        if(simulation.window.getKey(GLFW_KEY_SPACE))
+            randomize(earth);
 
-        if(window->getKey(GLFW_KEY_SPACE))
-            randomize();
+        for(int i = 1; i < WIDTH - 1; i++) {
+            for(int j = 1; j < HEIGTH - 1; j++) {
+                simulation.cells.set(i, j, glm::u8vec3(earth.get(i, j) * 255));
 
-        for(int i = 0; i < WIDTH; i++) {
-            for(int j = 0; j < HEIGTH; j++) {
-                cells->set(i, j, glm::u8vec3(earth.get(i, j) * 255));
-
-                int neighbor = countNeighbors(i, j);
+                int neighbor = countNeighbors(i, j, earth);
 
                 if(neighbor < 2 || neighbor > 3)    nextEarth.set(i, j, false);
                 else if(neighbor == 3)  nextEarth.set(i, j, true);
@@ -57,13 +50,9 @@ public:
         }
 
         std::swap(earth, nextEarth);
-    }
-};
+    };
 
-int main() {
-    gameOfLife simulation;
 
-    simulation.setup(WIDTH, HEIGTH, PIXEL_SIZE, "lo");
     simulation.mainLoop();
     return 0;
 }

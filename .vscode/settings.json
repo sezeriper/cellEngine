@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "SConstruct": "plaintext",
+        "random": "cpp"
+    }
+}
