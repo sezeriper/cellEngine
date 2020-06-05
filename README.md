@@ -6,10 +6,10 @@ With cellEngine, you can easily manipulate colors and sizes of individual pixels
 
 ## How to Build
 ...
-git clone https://github.com/szrIpr/cellEngine.git --recursive
-cd cellEngine
-mkdir build
-cd build
-cmake ..
-cmake --build .
+$ git clone https://github.com/szrIpr/cellEngine.git --recursive
+$ cd cellEngine
+$ mkdir build
+$ cd build
+$ cmake ..
+$ cmake --build .
 ...
