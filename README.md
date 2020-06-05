@@ -13,3 +13,4 @@ $ cd build
 $ cmake ..
 $ cmake --build .
 ```
+This will create an exacutable in cellEngine/bin
