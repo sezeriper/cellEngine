@@ -1,13 +1,10 @@
-cmake_minimum_required(VERSION 3.17.3)
 project(cellEngine)
-
-set(EXECUTABLE_OUTPUT_PATH "${CMAKE_CURRENT_SOURCE_DIR}/bin")
 
 add_subdirectory(glfw)
 add_subdirectory(glm)
 add_subdirectory(glad)
 
-add_executable(demo main.cpp)
+add_executable(demo examples/game_of_life.cpp)
 
 target_compile_options(demo PRIVATE /W4)
 

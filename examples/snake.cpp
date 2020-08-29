@@ -10,21 +10,21 @@
 
 int main() {
 
-    std::vector<glm::vec2> snake(1, glm::vec2(WIDTH/2, HEIGTH/2));
-    glm::vec2 dir(1, 0);
-    glm::vec2 newDir(1, 0);
+    std::vector<glm::ivec2> snake(1, glm::vec2(WIDTH/2, HEIGTH/2));
+    glm::ivec2 dir(1, 0);
+    glm::ivec2 newDir(1, 0);
 
     std::random_device rd;
     std::default_random_engine generator(rd());
     std::uniform_int_distribution<int> distribution(0, WIDTH-1);
 
     auto getRandomLocation = [&distribution, &generator] () {
-        return glm::vec2(distribution(generator), distribution(generator));
+        return glm::ivec2(distribution(generator), distribution(generator));
     };
 
-    glm::vec2 food = getRandomLocation();
+    glm::ivec2 food = getRandomLocation();
 
-    auto test = [&] (glm::vec2 pos) {
+    auto test = [&] (glm::ivec2 pos) {
         for(auto i = snake.begin()+1; i != snake.end(); i++) if(pos == *i) return true;
         return (pos.x < 0) || (pos.x > WIDTH-1) || (pos.y < 0) || (pos.y > WIDTH-1);
     };
@@ -36,7 +36,7 @@ int main() {
         else if(simulation.window.getKey(GLFW_KEY_S)) newDir = glm::vec2(0, 1);
         else if(simulation.window.getKey(GLFW_KEY_A)) newDir = glm::vec2(-1, 0);
         else if(simulation.window.getKey(GLFW_KEY_D)) newDir = glm::vec2(1, 0);
-        if(newDir+dir != glm::vec2(0)) dir = newDir;
+        if(newDir+dir != glm::ivec2(0)) dir = newDir;
 
         for(auto i = snake.rbegin(); i != snake.rend()-1; i++)
             *i = *(i+1);

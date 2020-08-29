@@ -1,11 +1,11 @@
 #include <stdlib.h>
 #include "cellEngine.hpp"
 
-#define WIDTH 500
-#define HEIGTH 500
-#define PIXEL_SIZE 1
+#define WIDTH 400
+#define HEIGTH 400
+#define PIXEL_SIZE 2
 
-int countNeighbors(int x, int y, const grid<bool>& grid) {
+int countNeighbors(int x, int y, const Grid<bool>& grid) {
     return  grid.get(x-1, y+1) +
             grid.get(x,   y+1) +
             grid.get(x+1, y+1) +
@@ -16,7 +16,7 @@ int countNeighbors(int x, int y, const grid<bool>& grid) {
             grid.get(x+1, y-1);
 }
 
-void randomize(grid<bool>& grid) {
+void randomize(Grid<bool>& grid) {
     for(int i = 0; i < WIDTH; i++) {
         for(int j = 0; j < HEIGTH; j++) {
             grid.set(i, j, rand() % 2);
@@ -27,8 +27,8 @@ void randomize(grid<bool>& grid) {
 int main() {
     cellEngine simulation(WIDTH, HEIGTH, PIXEL_SIZE, "lo");
 
-    grid<bool> earth(WIDTH, HEIGTH);
-    grid<bool> nextEarth(WIDTH, HEIGTH);
+    Grid<bool> earth(WIDTH, HEIGTH);
+    Grid<bool> nextEarth(WIDTH, HEIGTH);
 
     simulation.update = [&simulation, &earth, &nextEarth](){
 

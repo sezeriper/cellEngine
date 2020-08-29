@@ -69,71 +69,74 @@ void main() {
 )";
 
 template<class T>
-class grid {
+class Grid {
 protected:
     int m_rows = 0;
     int m_cols = 0;
-    int length = 0;
-    T* gridPtr = nullptr;
+    int size = 0;
+    T* data = nullptr;
     
 public:
-    grid() {}
-    ~grid() {
-        delete[] gridPtr;
-        gridPtr = nullptr;
+    Grid() {}
+    ~Grid() {
+        delete[] data;
     }
 
-    grid(const int rows, const int cols) { resize(rows, cols); }
+    Grid(const int rows, const int cols) { resize(rows, cols); }
     
-    grid(grid<T>&& rGrid) : m_rows(rGrid.m_rows), m_cols(rGrid.m_cols), length(rGrid.length), gridPtr(rGrid.gridPtr) {
+    Grid(Grid<T>&& rGrid) : m_rows(rGrid.m_rows), m_cols(rGrid.m_cols), size(rGrid.size), data(rGrid.data) {
         rGrid.m_rows = 0;
         rGrid.m_cols = 0;
-        rGrid.length = 0;
-        rGrid.gridPtr = nullptr; 
+        rGrid.size = 0;
+        rGrid.data = nullptr; 
     }
 
-    void fill(const T data) { std::fill_n(gridPtr, length, data); }
+    void fill(const T& value) { std::fill_n(data, size, value); }
 
     void resize(const int rows, const int cols) {
         if (rows == m_rows && cols == m_cols) return;
 
-        if (rows * cols == m_rows * m_cols) std::swap(m_rows, m_cols);
+        if (rows * cols == m_rows * m_cols) {
+            std::swap(m_rows, m_cols);
+            return;
+        }
 
         m_rows = rows;
         m_cols = cols;
-        length = rows * cols;
+        size = rows * cols;
 
-        gridPtr = new T[length];
+        delete[] data;
+        data = new T[size];
     }
 
-    grid<T>& operator=(const grid<T>& other) {
+    Grid<T>& operator=(const Grid<T>& other) {
         if(this != &other) {
 
             resize(other.size);
-            std::copy_n(other.gridPtr, length, gridPtr);
+            std::copy_n(other.data, size, data);
         }
         return *this;
     }
 
-    grid<T>& operator=(grid<T>&& other) noexcept {
+    Grid<T>& operator=(Grid<T>&& other) {
         m_rows = other.m_rows;
         m_cols = other.m_cols;
-        length = other.length;
-        gridPtr = other.gridPtr;
+        size = other.size;
+        data = other.data;
 
         other.m_rows = 0;
         other.m_cols = 0;
-        other.length = 0;
-        other.gridPtr = nullptr;
+        other.size = 0;
+        other.data = nullptr;
 
         return *this;
     }
 
-    int getLength() const { return length; }
-    T* getPtr() const { return gridPtr; }
+    int get_size() const { return size; }
+    const T* get_data() const { return data; }
 
-    T get(const int x, const int y) const { return gridPtr[y * m_cols + x]; }
-    void set(const int x, const int y, T val) { gridPtr[y * m_cols + x] = val; }
+    T get(const int x, const int y) const { return data[y * m_cols + x]; }
+    void set(const int x, const int y, T val) { data[y * m_cols + x] = val; }
 };
 
 class Shader {
@@ -144,14 +147,14 @@ private:
     void errorCheck(GLuint ID) {
 
         GLint result = GL_FALSE;
-        GLint infoLength;
+        GLint infosize;
 
         glGetShaderiv(ID, GL_COMPILE_STATUS, &result);
-        glGetShaderiv(ID, GL_INFO_LOG_LENGTH, &infoLength);
+        glGetShaderiv(ID, GL_INFO_LOG_LENGTH, &infosize);
 
-        if(infoLength > 0) {
-            std::vector<char> ErrorMessage(infoLength + 1);
-            glGetShaderInfoLog(ID, infoLength, nullptr, &ErrorMessage[0]);
+        if(infosize > 0) {
+            std::vector<char> ErrorMessage(infosize + 1);
+            glGetShaderInfoLog(ID, infosize, nullptr, &ErrorMessage[0]);
             std::cerr << &ErrorMessage[0];
         }
     }
@@ -207,7 +210,7 @@ public:
     }
 };
 
-class ColorGrid : public grid<glm::u8vec3> {
+class ColorGrid : public Grid<glm::u8vec3> {
 private:
     const Shader& cellShader;
 
@@ -218,8 +221,10 @@ private:
 public:
 
     ColorGrid(const int rows, const int cols, const Shader& shaderProgram): cellShader(shaderProgram) {
-        resize(rows, cols);
-
+        m_rows = rows;
+        m_cols = cols;
+        size = rows * cols;
+        
         glGenBuffers(2, &vbo[0]);
 
         glCreateVertexArrays(1, &vao);
@@ -236,7 +241,7 @@ public:
         glVertexArrayAttribBinding(vao, 0, 0);
         glVertexArrayAttribBinding(vao, 1, 1);
 
-        grid<glm::uvec2> positions(rows, cols);
+        Grid<glm::uvec2> positions(rows, cols);
 
         for(int i = 0; i < cols; i++) {
             for(int j = 0; j < rows; j++) {
@@ -244,22 +249,23 @@ public:
             }
         }
 
-        glNamedBufferStorage(vbo[0], length * sizeof(glm::uvec2), positions.getPtr(), GL_MAP_READ_BIT);
-        glNamedBufferStorage(vbo[1], length * sizeof(glm::u8vec3), nullptr, flags);
+        glNamedBufferStorage(vbo[0], size * sizeof(glm::uvec2), positions.get_data(), GL_MAP_READ_BIT);
+        glNamedBufferStorage(vbo[1], size * sizeof(glm::u8vec3), nullptr, flags);
         
         glBindVertexArray(vao);
 
-        gridPtr = (glm::u8vec3*)glMapNamedBufferRange(vbo[1], 0, length * sizeof(glm::u8vec3), flags);
+        data = (glm::u8vec3*)glMapNamedBufferRange(vbo[1], 0, size * sizeof(glm::u8vec3), flags);
     }
 
     void render() const {
         const glm::mat4 proj = glm::ortho(0.0f, (float)m_rows, (float)m_cols, 0.0f);
         cellShader.setProjection(proj);
 
-        glDrawArrays(GL_POINTS, 0, length);
+        glDrawArrays(GL_POINTS, 0, size);
     }
 
     ~ColorGrid() {
+        data = nullptr;
         glUnmapNamedBuffer(vbo[1]);
         glBindVertexArray(0);
         glDeleteBuffers(2, &vbo[0]);
@@ -296,6 +302,7 @@ private:
         windowPtr->scroll = yoffset;
         windowPtr->updated = true;
     }
+
 public:
     Window(const unsigned int width, const unsigned int height, const char* title) {
 
@@ -323,7 +330,7 @@ public:
         }else 
             std::cout << "Opengl version: " << glGetString(GL_VERSION) << "\n";
 
-        std::memset(&keys[0], false, sizeof(keys));
+        std::fill_n(&keys[0], sizeof(keys) / sizeof(bool), false);
     }
 
     void close() const {
