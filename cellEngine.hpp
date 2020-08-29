@@ -277,7 +277,6 @@ private:
     bool keys[512];
 
     static void errorCallback(int error, const char* description) {
-
         std::cerr << "Error(" << error << "): " << description << "\n";
     }
 
@@ -325,6 +324,10 @@ public:
             std::cout << "Opengl version: " << glGetString(GL_VERSION) << "\n";
 
         std::memset(&keys[0], false, sizeof(keys));
+    }
+
+    void close() const {
+        glfwSetWindowShouldClose(window_ptr, GLFW_TRUE);
     }
 
     bool shouldClose() const {
@@ -390,8 +393,8 @@ public:
             window.update();
 
             double frameTime = window.getTime() - _time;
-            //std::chrono::duration<double, std::milli> sleepDuration((1000.0/5.0) - frameTime);
-            //std::this_thread::sleep_for(sleepDuration);
+            std::chrono::duration<double, std::milli> sleepDuration((1000.0/30.0) - frameTime);
+            std::this_thread::sleep_for(sleepDuration);
             std::cout << 1.0 / frameTime << "\n";
         }
     }

@@ -5,8 +5,6 @@
 #define HEIGTH 500
 #define PIXEL_SIZE 1
 
-
-
 int countNeighbors(int x, int y, const grid<bool>& grid) {
     return  grid.get(x-1, y+1) +
             grid.get(x,   y+1) +
